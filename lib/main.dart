@@ -2,7 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:gymer/app/auth/loginconfirmation.dart';
 import 'package:gymer/app/auth/register_page.dart';
-import 'package:gymer/app/home_page.dart';
+import 'package:gymer/app/splash/splash_screen.dart';
+import 'package:gymer/app/user/home/userhome_screen.dart';
 import 'package:gymer/firebase_options.dart';
 
 void main() async {
@@ -29,8 +30,9 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => HomePage(),
-        '/log-in': (context) => Login(),
+        '/': (context) => SplashScreen(),
+        '/user': (context) => UserhomeScreen(),
+        '/login': (context) => Login(),
         '/register': (context) => RegisterPage(),
       },
     );

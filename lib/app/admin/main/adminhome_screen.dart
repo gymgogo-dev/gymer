@@ -3,11 +3,35 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gymer/app/admin/absencelist/absencelist_screen.dart';
 import 'package:gymer/app/admin/addmember/addmember_screen.dart';
 import 'package:gymer/app/admin/memberdata/memberlist_screen.dart';
-import 'package:gymer/app/auth/loginconfirmation.dart';
+import 'package:gymer/app/auth/login_screen.dart';
 import 'package:gymer/service/database/database_service.dart';
-import 'package:gymer/widget/dateslider/dateslider.dart';
-import 'package:gymer/widget/loading/loadingwidget.dart';
 import 'package:gymer/widget/qrscanner/qr_scanner.dart';
+import 'package:gymer/widget/loading/loadingwidget.dart';
+
+class WaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    var path = Path();
+    path.lineTo(0, size.height - 50);
+    var firstControlPoint = Offset(size.width / 4, size.height);
+    var firstEndPoint = Offset(size.width / 2, size.height - 30.0);
+    path.quadraticBezierTo(
+        firstControlPoint.dx, firstControlPoint.dy, firstEndPoint.dx, firstEndPoint.dy);
+
+    var secondControlPoint = Offset(size.width - (size.width / 4), size.height - 65);
+    var secondEndPoint = Offset(size.width, size.height - 40);
+    path.quadraticBezierTo(
+        secondControlPoint.dx, secondControlPoint.dy, secondEndPoint.dx, secondEndPoint.dy);
+
+    path.lineTo(size.width, size.height - 40);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
 
 class AdminhomeScreen extends StatefulWidget {
   const AdminhomeScreen({super.key});
@@ -17,27 +41,21 @@ class AdminhomeScreen extends StatefulWidget {
 }
 
 class _AdminhomeScreenState extends State<AdminhomeScreen> {
-  DatabaseService service = DatabaseService();
-  FirebaseAuth auth = FirebaseAuth.instance;
-  String? userName;
-  String? userEmail;
-  String? userPackage;
-  String? userRemainingDays;
-  DateTime selectedDate = DateTime.now();
+  final FirebaseAuth auth = FirebaseAuth.instance;
+  final DatabaseService service = DatabaseService();
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void _onDateChanged(DateTime date) {
-    setState(() {
-      selectedDate = date;
-    });
+  Future<void> _logout() async {
+    await auth.signOut();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
   }
 
   Future<void> _scanQRCode() async {
-    // Navigate to the QR code scanner screen and get the result back
     final scanResult = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => QRViewExample()),
@@ -54,6 +72,7 @@ class _AdminhomeScreenState extends State<AdminhomeScreen> {
           actions: [
             TextButton(
               onPressed: () {
+                Navigator.pop(context);
                 _recordAttendance(email!, name!);
               },
               child: const Text('Konfirmasi Absen'),
@@ -75,45 +94,30 @@ class _AdminhomeScreenState extends State<AdminhomeScreen> {
       }
       return qrData.substring(startIndex, endIndex).trim();
     }
-
     return null;
   }
 
   String? getNameFromQrData(String qrData) {
-    // Define the search key
     String searchKey = 'Nama: ';
-
-    // Find the start index of the email key
     int startIndex = qrData.indexOf(searchKey);
-
-    // If the key is found in the QR data
     if (startIndex != -1) {
-      // Move the start index to the end of the 'Email: ' key
       startIndex += searchKey.length;
-
-      // Find the end index of the email (next newline or end of string)
       int endIndex = qrData.indexOf('\n', startIndex);
-
-      // If endIndex is -1, it means the email is the last part of the string
       if (endIndex == -1) {
         endIndex = qrData.length;
       }
-
-      // Extract and return the email substring, trimmed of any extra spaces
       return qrData.substring(startIndex, endIndex).trim();
     }
-
-    // Return null if 'Email: ' key is not found
     return null;
   }
 
   Future<void> _recordAttendance(String email, String name) async {
     try {
       LoadingDialog.show(context);
-
       await service.recordAttendance(email, name);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Absen Berhasil')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Absen Berhasil')),
+      );
     } catch (e) {
       print('Error: $e');
     } finally {
@@ -123,205 +127,120 @@ class _AdminhomeScreenState extends State<AdminhomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryColor = Color(0xFF2C384A);
+    const Color backgroundColor = Color(0xFFF5F5F5);
+
     return Scaffold(
-      backgroundColor: Colors.blue,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            automaticallyImplyLeading: false,
-            backgroundColor: Colors.blue,
-            expandedHeight: 150.0,
-            floating: false,
-            pinned: true,
-            flexibleSpace: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                var top = constraints.biggest.height;
-                return FlexibleSpaceBar(
-                  titlePadding: EdgeInsets.only(
-                    left: top <= 56 ? 16 : 0,
-                    bottom: 16,
-                    right: top <= 56 ? 16 : 0,
-                  ),
-                  centerTitle: top > 56,
-                  title: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      'Halo, Admin',
+      backgroundColor: backgroundColor,
+      body: Column(
+        children: <Widget>[
+          ClipPath(
+            clipper: WaveClipper(),
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.45,
+              color: primaryColor,
+              child: const Padding(
+                padding: EdgeInsets.only(top: 60.0, left: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "HELLO,",
                       style: TextStyle(
-                          color: top <= 56 ? Colors.black : Colors.white),
+                        color: Colors.white70,
+                        fontSize: 32,
+                      ),
                     ),
-                  ),
-                  background: Container(
-                    color: Colors.blue,
-                  ),
-                );
-              },
+                    Text(
+                      "ADMIN",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                DateSlider(onDateChanged: _onDateChanged),
-                Container(
-                  height: MediaQuery.of(context).size.height - 200,
-                  width: MediaQuery.of(context).size.width,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(30)),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Absen GYM',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Card(
-                          color: Colors.white,
-                          elevation: 5,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                const SizedBox(
-                                  height: 24,
-                                ),
-                                const Text(
-                                  'Silahkan Scan QR code untuk absensi member GYM',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                  ),
-                                  textAlign: TextAlign.start,
-                                ),
-                                const SizedBox(
-                                  height: 24,
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: _scanQRCode,
-                                        child: const Text('Scan QR Code'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(
-                                  height: 24,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AbsencelistScreen()));
-                          },
-                          child: const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(12.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('List Absensi'),
-                                  Icon(Icons.arrow_right)
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AddmemberScreen()));
-                          },
-                          child: const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(12.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Tambah Member'),
-                                  Icon(Icons.arrow_right)
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const MemberListScreen()));
-                          },
-                          child: const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(12.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Data Member'),
-                                  Icon(Icons.arrow_right)
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 24,
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  auth.signOut();
-                                  Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) => const Login()));
-                                },
-                                child: const Text('Log Out'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    iconPath: 'assets/images/absen.png',
+                    label: 'List Absensi',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AbsencelistScreen()),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    iconPath: 'assets/images/member.png',
+                    label: 'Tambah Member',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AddmemberScreen()),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionButton(
+                    iconPath: 'assets/images/group.png',
+                    label: 'Data Member',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MemberListScreen()),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _logout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text('Logout'),
+                  ),
+                ],
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({required String iconPath, required String label, required VoidCallback onTap}) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF2C384A),
+        elevation: 5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        minimumSize: const Size(double.infinity, 70),
+      ),
+      onPressed: onTap,
+      child: Row(
+        children: [
+          Image.asset(iconPath, height: 32, width: 32),
+          const SizedBox(width: 20),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

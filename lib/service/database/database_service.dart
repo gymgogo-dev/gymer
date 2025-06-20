@@ -18,7 +18,7 @@ class DatabaseService {
       DatabaseReference attendanceRef = database.ref().child('attendance/');
 
       try {
-        // Query to find user with matching email
+        // Cari user berdasarkan email
         var query = userRef.orderByChild('email').equalTo(email);
         DatabaseEvent event = await query.once();
         DataSnapshot snapshot = event.snapshot;
@@ -26,8 +26,8 @@ class DatabaseService {
         if (snapshot.value != null) {
           Map<dynamic, dynamic>? users =
               snapshot.value as Map<dynamic, dynamic>?;
-
           String? userId;
+
           users?.forEach((key, value) {
             if (value['email'] == email) {
               userId = key;
@@ -37,15 +37,15 @@ class DatabaseService {
           if (userId != null) {
             var userData = users?[userId];
             var membership = userData?['membership'];
-            var remainingDays = membership?['remainingDays'];
+            int? remainingDays = membership?['remainingDays'];
 
-            var now = DateTime.now();
-            var todayString = "${now.year}-${now.month}-${now.day}";
-            var timeString = "${now.hour}:${now.minute}";
+            final now = DateTime.now();
+            final todayString = "${now.year}-${now.month}-${now.day}";
+            final timeString = "${now.hour}:${now.minute}";
 
-            var attendanceSnapshot =
+            // Cek apakah sudah absen hari ini
+            final attendanceSnapshot =
                 await attendanceRef.orderByChild('email').equalTo(email).get();
-
             bool alreadyMarkedToday = false;
 
             if (attendanceSnapshot.value != null) {
@@ -58,30 +58,36 @@ class DatabaseService {
               });
             }
 
-            if (!alreadyMarkedToday &&
-                remainingDays != null &&
-                remainingDays > 0) {
-              remainingDays -= 1;
-              await userRef.child(userId!).child('membership').update({
-                'remainingDays': remainingDays,
-              });
+            if (alreadyMarkedToday) {
+              throw Exception("Maaf, Anda sudah melakukan absen hari ini.");
             }
+
+            if (remainingDays == null || remainingDays <= 0) {
+              throw Exception("Anda tidak memiliki sisa hari.");
+            }
+
+            // Semua validasi lolos: update sisa hari dan catat absen
+            await userRef.child(userId!).child('membership').update({
+              'remainingDays': remainingDays - 1,
+            });
 
             await attendanceRef.push().set({
               'date': todayString,
               'time': timeString,
               'email': email,
               'name': name,
-              'remainingDays': remainingDays
+              'remainingDays': remainingDays - 1,
             });
           } else {
-            print('Email $email not found in the database.');
+            throw Exception("Email $email tidak ditemukan di database.");
           }
         } else {
-          print('Email $email not found in the database.');
+          throw Exception("Email $email tidak ditemukan di database.");
         }
       } catch (e) {
+        // Tangkap semua error dan jangan catat absen
         print('Error: $e');
+        rethrow; // agar bisa ditangani dari pemanggil, misal ditampilkan ke user
       }
     }
   }
@@ -132,6 +138,36 @@ class DatabaseService {
         return absences;
       } else {
         print('No absence data available');
+        return [];
+      }
+    });
+  }
+
+  Stream<List<Map<String, String>>> getUserAbsenceList(String email) {
+    final ref = database.ref().child('attendance/');
+
+    return ref.onValue.map((event) {
+      final snapshot = event.snapshot;
+
+      if (snapshot.exists) {
+        List<Map<String, String>> absences = [];
+        Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
+
+        data.forEach((key, value) {
+          if (value['email'] == email) {
+            absences.add({
+              'date': value['date'].toString(),
+              'email': value['email'].toString(),
+              'name': value['name'].toString(),
+              'remainingDays': value['remainingDays'].toString(),
+              'time': value['time'].toString()
+            });
+          }
+        });
+
+        return absences;
+      } else {
+        print('No attendance data available for $email');
         return [];
       }
     });
@@ -188,15 +224,18 @@ class DatabaseService {
     User? user = auth.currentUser;
     if (user != null) {
       final ref = database.ref().child('users/${user.uid}');
+
       return ref.onValue.map((event) {
         final snapshot = event.snapshot;
+
         if (snapshot.exists) {
-          String name = snapshot.child('nama').value.toString();
-          String email = snapshot.child('email').value.toString();
+          String name = snapshot.child('nama').value?.toString() ?? '-';
+          String email = snapshot.child('email').value?.toString() ?? '-';
           String package =
-              snapshot.child('membership/package').value.toString();
+              snapshot.child('membership/package').value?.toString() ?? '-';
           String remainingDays =
-              snapshot.child('membership/remainingDays').value.toString();
+              snapshot.child('membership/remainingDays').value?.toString() ??
+                  '0';
 
           return {
             'name': name,
@@ -205,12 +244,12 @@ class DatabaseService {
             'remainingDays': remainingDays,
           };
         } else {
-          print('No data available');
+          print('⚠️ No data available for UID: ${user.uid}');
           return null;
         }
       });
     } else {
-      print('User not logged in');
+      print('❌ User not logged in');
       return Stream.value(null);
     }
   }

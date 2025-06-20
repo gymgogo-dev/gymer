@@ -20,16 +20,19 @@ class _MemberInfoScreenState extends State<MemberInfoScreen> {
 
   final List<String> packages = ['2 Minggu', '1 Bulan', 'Tidak ada paket'];
 
+  final Color primaryColor = const Color(0xFF2C384A);
+  final Color hintColor = Colors.black38;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.member['nama'] ?? '');
-    _emailController =
-        TextEditingController(text: widget.member['email'] ?? '');
+    _emailController = TextEditingController(text: widget.member['email'] ?? '');
 
     final membership = widget.member['membership'] as Map<String, dynamic>;
-    _remainingDaysController =
-        TextEditingController(text: membership['remainingDays'].toString());
+    _remainingDaysController = TextEditingController(
+      text: membership['remainingDays'].toString(),
+    );
     _selectedPackage = membership['package'];
   }
 
@@ -61,47 +64,57 @@ class _MemberInfoScreenState extends State<MemberInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: primaryColor,
       appBar: AppBar(
-        title: const Text('Edit Member'),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'EDIT MEMBER',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
         child: Column(
           children: [
-            TextFormField(
+            _buildTextField(
               controller: _emailController,
-              decoration: const InputDecoration(
-                hintText: 'Email',
-                prefixIcon: Icon(Icons.email),
-              ),
+              hintText: 'Email',
+              icon: Icons.email_outlined,
               readOnly: true,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: 16),
+            _buildTextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: 'Nama',
-                prefixIcon: Icon(Icons.person),
-              ),
+              hintText: 'Nama',
+              icon: Icons.person_outline,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedPackage,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.card_giftcard),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
                 hintText: 'Pilih Paket',
+                hintStyle: TextStyle(color: hintColor),
+                prefixIcon: Icon(Icons.card_giftcard_outlined, color: hintColor),
               ),
+              dropdownColor: Colors.white,
+              style: TextStyle(color: primaryColor),
               items: packages.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
                   child: Text(value),
                 );
               }).toList(),
-              onChanged: (newValue) {
+              onChanged: (String? newValue) {
                 setState(() {
                   _selectedPackage = newValue;
-
-                  // Atur remainingDays berdasarkan paket yang dipilih
                   if (_selectedPackage == '2 Minggu') {
                     _remainingDaysController.text = '14';
                   } else if (_selectedPackage == '1 Bulan') {
@@ -112,28 +125,60 @@ class _MemberInfoScreenState extends State<MemberInfoScreen> {
                 });
               },
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: 16),
+            _buildTextField(
               controller: _remainingDaysController,
+              hintText: 'Hari Tersisa',
+              icon: Icons.calendar_today,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: 'Hari Tersisa',
-                prefixIcon: Icon(Icons.calendar_today),
-              ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _updateMember,
-                    child: const Text('Update Member'),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
+                onPressed: _updateMember,
+                child: const Text(
+                  'Update Member',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Color(0xFF2C384A)),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        hintText: hintText,
+        hintStyle: TextStyle(color: hintColor),
+        prefixIcon: Icon(icon, color: hintColor),
       ),
     );
   }

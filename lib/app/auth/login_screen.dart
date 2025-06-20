@@ -1,15 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gymer/app/admin/addmember/addmember_controller.dart';
-import 'package:gymer/app/auth/login_screen.dart';
-import 'package:gymer/service/register/register_service.dart';
+import 'package:gymer/app/admin/main/adminhome_screen.dart';
+import 'package:gymer/app/auth/loginuser/userlogin_controller.dart';
+import 'package:gymer/app/auth/register_page.dart';
+import 'package:gymer/app/user/home/userhome_screen.dart';
+import 'package:gymer/service/login/login_service.dart';
 import 'package:gymer/widget/loading/loadingwidget.dart';
 
+// Kelas untuk membuat bentuk lengkung pada header
 class WaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     var path = Path();
-    path.lineTo(0, size.height - 50);
+    path.lineTo(0, size.height - 50); // Titik awal lengkungan
     var firstControlPoint = Offset(size.width / 4, size.height);
     var firstEndPoint = Offset(size.width / 2, size.height - 30.0);
     path.quadraticBezierTo(firstControlPoint.dx, firstControlPoint.dy,
@@ -31,54 +34,76 @@ class WaveClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  _RegisterPageState createState() => _RegisterPageState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
-  RegisterService service = RegisterService();
-  AddmemberController controller = AddmemberController();
-  FirebaseAuth auth = FirebaseAuth.instance;
+class _LoginScreenState extends State<LoginScreen> {
+  final LoginController controller = LoginController();
+  final LoginService service = LoginService();
+  bool _obscureText = true;
 
-  int? remainingDays = 0;
-  String? _selectedPackage = 'Tidak ada paket';
+  // Logika login tetap sama seperti sebelumnya
+  void _handleLogin() async {
+    String email = controller.emailController.text.trim();
+    String password = controller.passwordController.text.trim();
 
-  Future<void> _registerUser() async {
-    if (_selectedPackage == '2 Minggu') {
-      remainingDays = 14;
-    } else if (_selectedPackage == '1 Bulan') {
-      remainingDays = 30;
-    }
+    const String adminEmail = 'admin@gmail.com';
+    const String adminPassword = 'passwordadmin';
+
+    LoadingDialog.show(context);
 
     try {
-      LoadingDialog.show(context);
+      if (email == adminEmail && password == adminPassword) {
+        User? admin = await service.adminLogin(email, password);
+        if (mounted) LoadingDialog.hide(context);
 
-      String memberName = controller.nameController.text;
-      String memberEmail = controller.emailController.text;
-      String memberPassword = controller.passwordController.text;
+        if (admin != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminhomeScreen()),
+          );
+        } else {
+          _showErrorSnackbar('Login Admin Gagal.');
+        }
+      } else {
+        User? user = await service.userLogin(email, password);
+        if (mounted) LoadingDialog.hide(context);
 
-      await service.registerUser(memberName, memberEmail, memberPassword,
-          _selectedPackage!, remainingDays!);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrasi berhasil!')),
-        );
-        Navigator.pushReplacementNamed(context, '/login');
+        if (user != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const UserhomeScreen()),
+          );
+        } else {
+          _showErrorSnackbar(
+              'Login Gagal. Periksa kembali email dan password Anda.');
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      LoadingDialog.hide(context);
+      if (mounted) LoadingDialog.hide(context);
+      _showErrorSnackbar('Terjadi kesalahan: ${e.toString()}');
     }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Definisikan warna dari Figma
     const Color primaryColor = Color(0xFF2C384A);
     const Color backgroundColor = Color(0xFFF5F5F5);
 
@@ -87,7 +112,7 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            // Header
+            // Header melengkung
             ClipPath(
               clipper: WaveClipper(),
               child: Container(
@@ -98,7 +123,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Register",
+                      "Login",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -107,7 +132,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      "Buat akun barumu di Gym App",
+                      "Welcome back!",
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 18,
@@ -118,17 +143,20 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
 
-            // Form Register
+            // Form Login
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 children: [
-                  TextFormField(
+                  // Email Textfield
+                  TextField(
                     controller: controller.emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       hintText: 'Email',
-                      prefixIcon: const Icon(Icons.email, color: primaryColor),
+                      prefixIcon:
+                          const Icon(Icons.person_outline, color: primaryColor),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -137,27 +165,28 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: controller.nameController,
-                    decoration: InputDecoration(
-                      hintText: 'Nama Lengkap',
-                      prefixIcon: const Icon(Icons.person, color: primaryColor),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
+                  const SizedBox(height: 20),
+                  // Password Textfield
+                  TextField(
                     controller: controller.passwordController,
-                    obscureText: true,
+                    obscureText: _obscureText,
                     decoration: InputDecoration(
                       hintText: 'Password',
-                      prefixIcon: const Icon(Icons.lock, color: primaryColor),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: primaryColor),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureText
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: primaryColor,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureText = !_obscureText;
+                          });
+                        },
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -166,42 +195,46 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  // Tombol Login
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _registerUser,
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          )),
+                      onPressed: _handleLogin,
                       child: const Text(
-                        'Daftar',
+                        'Login',
                         style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
                     ),
                   ),
                   const SizedBox(height: 48),
+                  // Logo di bawah
                   Image.asset('assets/images/logo_gymer.png', height: 40),
                   const SizedBox(height: 16),
+                  // Link Register (opsional)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Sudah punya akun? ",
-                          style: TextStyle(color: Colors.grey)),
+                      const Text(
+                        "You don't have an account yet? ",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                       GestureDetector(
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => LoginScreen()),
+                                builder: (context) => RegisterPage()),
                           );
                         },
                         child: const Text(
-                          "Login",
+                          "Register",
                           style: TextStyle(
                             color: primaryColor,
                             fontWeight: FontWeight.bold,
@@ -209,7 +242,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                     ],
-                  ),
+                  )
                 ],
               ),
             ),
