@@ -1,11 +1,23 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gymer/app/admin/main/adminhome_screen.dart';
-import 'package:gymer/app/auth/loginuser/userlogin_controller.dart';
 import 'package:gymer/app/auth/register_page.dart';
 import 'package:gymer/app/user/home/userhome_screen.dart';
 import 'package:gymer/service/login/login_service.dart';
 import 'package:gymer/widget/loading/loadingwidget.dart';
+
+import 'package:flutter/widgets.dart';
+
+class LoginController{
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  void dispose(){
+    emailController.dispose();
+    passwordController.dispose();
+  }
+
+}
 
 // Kelas untuk membuat bentuk lengkung pada header
 class WaveClipper extends CustomClipper<Path> {

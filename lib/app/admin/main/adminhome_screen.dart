@@ -5,8 +5,6 @@ import 'package:gymer/app/admin/addmember/addmember_screen.dart';
 import 'package:gymer/app/admin/memberdata/memberlist_screen.dart';
 import 'package:gymer/app/auth/login_screen.dart';
 import 'package:gymer/service/database/database_service.dart';
-import 'package:gymer/widget/qrscanner/qr_scanner.dart';
-import 'package:gymer/widget/loading/loadingwidget.dart';
 
 class WaveClipper extends CustomClipper<Path> {
   @override
@@ -52,76 +50,6 @@ class _AdminhomeScreenState extends State<AdminhomeScreen> {
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (Route<dynamic> route) => false,
       );
-    }
-  }
-
-  Future<void> _scanQRCode() async {
-    final scanResult = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => QRViewExample()),
-    );
-
-    if (scanResult != null) {
-      String? email = getEmailFromQrData(scanResult);
-      String? name = getNameFromQrData(scanResult);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Data Absensi'),
-          content: Text('$scanResult'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _recordAttendance(email!, name!);
-              },
-              child: const Text('Konfirmasi Absen'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  String? getEmailFromQrData(String qrData) {
-    String searchKey = 'Email: ';
-    int startIndex = qrData.indexOf(searchKey);
-    if (startIndex != -1) {
-      startIndex += searchKey.length;
-      int endIndex = qrData.indexOf('\n', startIndex);
-      if (endIndex == -1) {
-        endIndex = qrData.length;
-      }
-      return qrData.substring(startIndex, endIndex).trim();
-    }
-    return null;
-  }
-
-  String? getNameFromQrData(String qrData) {
-    String searchKey = 'Nama: ';
-    int startIndex = qrData.indexOf(searchKey);
-    if (startIndex != -1) {
-      startIndex += searchKey.length;
-      int endIndex = qrData.indexOf('\n', startIndex);
-      if (endIndex == -1) {
-        endIndex = qrData.length;
-      }
-      return qrData.substring(startIndex, endIndex).trim();
-    }
-    return null;
-  }
-
-  Future<void> _recordAttendance(String email, String name) async {
-    try {
-      LoadingDialog.show(context);
-      await service.recordAttendance(email, name);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Absen Berhasil')),
-      );
-    } catch (e) {
-      print('Error: $e');
-    } finally {
-      LoadingDialog.hide(context);
     }
   }
 
